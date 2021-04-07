@@ -29,7 +29,7 @@ const SignUp = function ({ navigation }) {
     createUser({
       name: state.name,
       password: state.password,
-      lastname: state.lastnames,
+      lastname: state.lastname,
       email: state.email
     })
       .then((response) => {

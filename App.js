@@ -1,4 +1,3 @@
-import { Text, View, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -6,7 +5,6 @@ import SignInScreen from './screen/public/SignInScreen';
 import SignUpScreen from './screen/public/SignUpScreen';
 import HomeScreen from './screen/private/HomeScreen';
 import ChatScreen from './screen/private/ChatScreen';
-import { Header, Icon } from 'react-native-elements';
 import React from 'react';
 
 const Tab = createMaterialTopTabNavigator();

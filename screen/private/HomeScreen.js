@@ -1,27 +1,49 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, ListItem, Avatar } from 'react-native-elements';
+import { firedata, searchGroup } from '../../service/Firebase';
 import { StyleSheet, StatusBar, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { readUsers } from '../../service/Firebase';
 import React, { useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 
 const HomeScreen = function ({ navigation }) {
-  const [users, setUsers] = useState();
-  const [name, setName] = useState();
+  const [userData, setUserData] = useState({});
+  const [userList, setUserList] = useState([]);
 
   useEffect(() => {
     AsyncStorage.getItem('user').then((response) => {
-      setName(JSON.parse(response).name);
+      setUserData(JSON.parse(response));
     });
 
-    readUsers().then((response) => {
-      setUsers(response);
-    });
+    firedata()
+      .ref('Users')
+      .on('value', (response) => {
+        let users = [];
+
+        response.forEach((user) => {
+          users.push({
+            uid: user.val().uid,
+            lastnames: user.val().lastnames,
+            register: user.val().registerDate,
+            email: user.val().email,
+            name: user.val().name
+          });
+        });
+
+        setUserList(users);
+      });
   }, []);
 
-  function userSelected(selected) {
-    navigation.navigate('ChatScreen', { selected: selected });
+  function onSelected(selected) {
+    searchGroup([
+      userData.uid.substring(0, 8) + selected.substring(0, 8),
+      selected.substring(0, 8) + userData.uid.substring(0, 8)
+    ]).then((response) => {
+      navigation.navigate('ChatScreen', {
+        selected: selected,
+        chatGroup: response
+      });
+    });
   }
 
   return (
@@ -29,34 +51,37 @@ const HomeScreen = function ({ navigation }) {
       <StatusBar backgroundColor="#000000" />
 
       <View style={styles.header}>
-        <Text style={{ color: '#ffffff', fontSize: 16 }}>Hola {name}!</Text>
+        <Text style={{ color: '#ffffff', fontSize: 16 }}>Hola {userData.name}!</Text>
         <Feather name="more-vertical" size={24} color="#FFFFFF" />
       </View>
 
       <ScrollView>
         <View style={styles.information}>
-          {users &&
-            users.map((user) => (
-              <ListItem
-                key={user.uid}
-                onPress={() => {
-                  userSelected(user.email);
-                }}
-              >
-                <Avatar
-                  rounded
-                  source={{
-                    uri:
-                      'https://librenoticias.com/wp-content/uploads/2020/08/default-user-image.png'
-                  }}
-                />
-                <ListItem.Content>
-                  <ListItem.Title>{user.name}</ListItem.Title>
-                  <ListItem.Subtitle>Estado</ListItem.Subtitle>
-                </ListItem.Content>
-                <ListItem.Chevron />
-              </ListItem>
-            ))}
+          {userList &&
+            userList.map((user) => {
+              if (user.uid != userData.uid) {
+                return (
+                  <ListItem
+                    key={user.uid}
+                    onPress={() => {
+                      onSelected(user.uid);
+                    }}
+                  >
+                    <Avatar
+                      rounded
+                      source={{
+                        uri: 'https://librenoticias.com/wp-content/uploads/2020/08/default-user-image.png'
+                      }}
+                    />
+                    <ListItem.Content>
+                      <ListItem.Title>{user.name}</ListItem.Title>
+                      <ListItem.Subtitle>Estado</ListItem.Subtitle>
+                    </ListItem.Content>
+                    <ListItem.Chevron />
+                  </ListItem>
+                );
+              }
+            })}
         </View>
       </ScrollView>
     </View>

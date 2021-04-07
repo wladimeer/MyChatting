@@ -5,18 +5,16 @@ import 'firebase/database';
 import { uid } from 'uid';
 import 'firebase/auth';
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyCnpUwRjgxBBxg_EwbIUo_e5iHC4ng_2VE',
-  authDomain: 'chatting-1fdbc.firebaseapp.com',
-  databaseURL: 'https://chatting-1fdbc-default-rtdb.firebaseio.com',
-  projectId: 'chatting-1fdbc',
-  storageBucket: 'chatting-1fdbc.appspot.com',
-  messagingSenderId: '886129123350',
-  appId: '1:886129123350:web:1ca517dfa009fb4856d537'
-};
-
 if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp({
+    apiKey: 'AIzaSyCnpUwRjgxBBxg_EwbIUo_e5iHC4ng_2VE',
+    authDomain: 'chatting-1fdbc.firebaseapp.com',
+    databaseURL: 'https://chatting-1fdbc-default-rtdb.firebaseio.com',
+    projectId: 'chatting-1fdbc',
+    storageBucket: 'chatting-1fdbc.appspot.com',
+    messagingSenderId: '886129123350',
+    appId: '1:886129123350:web:1ca517dfa009fb4856d537'
+  });
 }
 
 const firedata = firebase.database;
@@ -28,11 +26,10 @@ function createUser(user) {
       .createUserWithEmailAndPassword(user.email, user.password)
       .then((response) => {
         user.registerDate = moment().format('DD-MM-YYYY');
-        user.password = null;
-        user.uid = uid(32);
+        (user.password = null), (user.uid = uid(32));
 
         AsyncStorage.setItem('user', JSON.stringify(user));
-        database.ref('Users').push().set(user);
+        firedata().ref('Users').push().set(user);
         resolve(true);
       })
       .catch((response) => {
@@ -49,6 +46,9 @@ function createUser(user) {
           case 'auth/email-already-in-use':
             reject('El correo se está utilizando!');
             break;
+          default:
+            reject('Firebase dejo de funcionar!');
+            break;
         }
       });
   });
@@ -61,8 +61,8 @@ function loginUser(form) {
       .then((response) => {
         searchUser(form.email).then((response) => {
           AsyncStorage.setItem('user', JSON.stringify(response));
+          resolve(true);
         });
-        resolve(true);
       })
       .catch((response) => {
         switch (response.code) {
@@ -78,40 +78,21 @@ function loginUser(form) {
           case 'auth/too-many-requests':
             reject('Demasiados intentos fallidos!');
             break;
+          default:
+            reject('Firebase dejo de funcionar!');
+            break;
         }
       });
   });
 }
 
-function readUsers() {
+function searchUser(value) {
   return new Promise((resolve, reject) => {
     firedata()
       .ref('Users')
-      .once('value', (response) => {
-        let users = [];
-
+      .on('value', (response) => {
         response.forEach((user) => {
-          users.push({
-            uid: user.key,
-            name: user.val().name,
-            email: user.val().email,
-            lastnames: user.val().lastnames,
-            register: user.val().registerDate
-          });
-        });
-
-        resolve(users);
-      });
-  });
-}
-
-function searchUser(email) {
-  return new Promise((resolve, reject) => {
-    firedata()
-      .ref('Users')
-      .once('value', (response) => {
-        response.forEach((user) => {
-          if (user.val().email == email) {
+          if (user.val().email == value) {
             resolve(user.val());
           }
         });
@@ -119,4 +100,68 @@ function searchUser(email) {
   });
 }
 
-export { createUser, loginUser, readUsers, searchUser };
+function createMessage(group, form) {
+  return new Promise((resolve, reject) => {
+    form.date = moment().format('DD-MM-YYYY');
+    form.time = moment().format('h:mm:ss a');
+    form.hour = moment().format('h:mm a');
+
+    firedata()
+      .ref('Messages/' + group)
+      .push()
+      .set(form)
+      .then((response) => {
+        readMessages(group).then((response) => {
+          resolve(response);
+        });
+      });
+  });
+}
+
+function readMessages(group) {
+  return new Promise((resolve, reject) => {
+    firedata()
+      .ref('Messages')
+      .on('value', (response) => {
+        response.forEach((groups) => {
+          if (groups.key == group) {
+            let messages = [];
+
+            groups.forEach((message) => {
+              messages.push(message.val());
+            });
+
+            resolve(messages);
+          }
+        });
+      });
+  });
+}
+
+function searchGroup(groups) {
+  return new Promise((resolve, reject) => {
+    firedata()
+      .ref('Messages')
+      .on('value', (response) => {
+        if (response.val() == null) {
+          resolve(groups[0]);
+        } else {
+          response.forEach((messageGroup) => {
+            switch (messageGroup.key) {
+              case groups[0]:
+                resolve(groups[0]);
+                break;
+              case groups[1]:
+                resolve(groups[1]);
+                break;
+              default:
+                resolve(groups[0]);
+                break;
+            }
+          });
+        }
+      });
+  });
+}
+
+export { firedata, createUser, loginUser, createMessage, searchGroup };
